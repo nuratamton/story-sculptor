@@ -17,6 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# confifg for BitsAndBytesConfig
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_use_double_quant=True,
@@ -24,6 +25,7 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.bfloat16,
 )
 
+# Load the model and tokenizer
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 base_model = "mistralai/Mistral-7B-Instruct-v0.2"
 tokenizer = AutoTokenizer.from_pretrained(base_model, pad_token="[PAD]")
@@ -33,6 +35,8 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
     trust_remote_code=True,
 )
+
+# apply adapter on the base model
 ft_model = PeftModel.from_pretrained(model, "nuratamton/story_sculptor_mistral").eval()
 memory = ConversationBufferWindowMemory(k=10)
 
@@ -51,9 +55,11 @@ async def generate_text(request: UserRequest):
     if user_in.lower() == "quit":
         raise HTTPException(status_code=400, detail="User requested to quit")
 
+    # load memory context
     memory_context = memory.load_memory_variables({})["history"]
     user_input = f"{memory_context}[INST] Continue the game and maintain context: {user_in}[/INST]"
 
+    # tokenize user input
     encodings = tokenizer(user_input, return_tensors="pt", padding=True).to(device)
     input_ids, attention_mask = encodings["input_ids"], encodings["attention_mask"]
     output_ids = ft_model.generate(
@@ -67,12 +73,14 @@ async def generate_text(request: UserRequest):
         repetition_penalty=1.2,
     )
 
+    # decode the generated output
     generated_ids = output_ids[0, input_ids.shape[-1] :]
     response = tokenizer.decode(generated_ids, skip_special_tokens=True)
     memory.save_context({"input": user_in}, {"output": response})
 
+    # remove unwanted tokens
     response = response.replace("AI: ", "")
-    # response = response.replace("Human: ", "")
+    response = response.replace("Human: ", "")
 
     return {"response": response}
 

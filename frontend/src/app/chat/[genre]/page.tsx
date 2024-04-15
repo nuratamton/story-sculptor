@@ -12,6 +12,7 @@ import {
   Box,
   Flex,
   Input,
+  Textarea,
   Button,
   VStack,
   Text,
@@ -190,11 +191,13 @@ export default function Chat({ params }: { params: { genre: string } }) {
             >
               <HStack spacing={4} flex="1" p={4} overflowY="auto">
                 <Input
+                  size = "lg"
                   disabled={isPending}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type something here..."
-                  size="lg"
+                  
+                  
                 />
                 <Button
                   isLoading={isPending}
